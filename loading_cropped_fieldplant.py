@@ -2,7 +2,7 @@ import tensorflow as tf
 from functools import partial
 import matplotlib.pyplot as plt
 
-from pipeline import finetuning_pipeline
+from src.pipeline import finetuning_pipeline
 
 AUTOTUNE = tf.data.AUTOTUNE
 BATCH_SIZE = 64

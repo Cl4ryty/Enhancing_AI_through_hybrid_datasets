@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from pipeline import finetuning_pipeline
+from src.pipeline import finetuning_pipeline
 
 batch_size = 32
 
