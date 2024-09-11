@@ -46,15 +46,17 @@ def load_tfrecord(filename):
     parsed_dataset = raw_dataset.map(parse_tfrecord)
     parsed_dataset = parsed_dataset.map(lambda x: (
     tf.image.decode_jpeg(x['image']), x['label']))  # Decode the image
-    return parsed_dataset
+    return parsed_dataset    return parsed_dataset
 
 
-def get_latest_checkpoint(checkpoint_dir):
+
+
+def get_latest_checkpoint(checkpoint_dir, pattern):
+    os.makedirs(checkpoint_dir, exist_ok=True)
     # List all files in the checkpoint directory
     files = os.listdir(checkpoint_dir)
 
-    # Regular expression to match the checkpoint pattern and extract the epoch number
-    pattern = re.compile(r"checkpoint-(\d+).weights.h5")
+
 
     # List to hold matching files with extracted epoch number
     checkpoint_files = []

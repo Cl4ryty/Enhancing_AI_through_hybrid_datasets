@@ -1,5 +1,5 @@
 import argparse
-from src.utils import load_tfrecord, write_tfrecord, undersample_dataset
+from utils import load_tfrecord, write_tfrecord, undersample_dataset
 
 
 # Define the default values

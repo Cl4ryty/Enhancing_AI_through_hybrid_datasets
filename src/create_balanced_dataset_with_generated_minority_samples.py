@@ -1,5 +1,5 @@
 import numpy as np
-from src.utils import (load_tfrecord, get_latest_checkpoint,
+from utils import (load_tfrecord, get_latest_checkpoint,
                        undersample_majority_classes)
 
 import argparse

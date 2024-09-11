@@ -1,6 +1,7 @@
 import tensorflow as tf
-from src.utils import load_tfrecord, get_latest_checkpoint, write_tfrecord
 import argparse
+from utils import load_tfrecord, get_latest_checkpoint, write_tfrecord
+
 
 # Define your default dataset paths
 real_dataset_path = '../processed_datasets/test1.tfrecord'

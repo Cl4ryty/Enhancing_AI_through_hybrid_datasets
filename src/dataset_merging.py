@@ -3,7 +3,7 @@ from functools import partial
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
-from src.utils import write_tfrecord
+from utils import write_tfrecord
 
 AUTOTUNE = tf.data.AUTOTUNE
 BATCH_SIZE = 64

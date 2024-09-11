@@ -38,16 +38,21 @@ def finetuning_pipeline(base_model, train_ds, validation_ds, test_ds, number_of_
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
                                                           histogram_freq=1)
 
-    checkpoint_filepath = 'ckpt/checkpoint.model.keras'
-    model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-            filepath=checkpoint_filepath, monitor='val_accuracy', mode='max',
-            save_best_only=True)
+    # Set up the ModelCheckpoint callback to save weights
+    checkpoint_filepath = "checkpoints/weights.{epoch:02d}-{val_loss:.2f}.hdf5"
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+            filepath=checkpoint_filepath,
+            save_weights_only=True,  # Save only the weights
+            monitor='val_accuracy',  # Monitor validation accuracy
+            mode='max',  # Save the model with the maximum validation accuracy
+            save_best_only=True  # Save the best model
+    )
 
     print("Fitting the top layer of the model")
     start_time = time.time()
 
     model.fit(train_ds, epochs=top_layer_epochs, validation_data=validation_ds,
-              callbacks=[tensorboard_callback, model_checkpoint_callback])
+              callbacks=[tensorboard_callback, checkpoint_callback])
     print("Time taken: %.2fs" % (time.time() - start_time))
 
     # Unfreeze the base_model. Note that it keeps running in inference mode
@@ -65,7 +70,7 @@ def finetuning_pipeline(base_model, train_ds, validation_ds, test_ds, number_of_
     print("Fitting the end-to-end model")
     start_time = time.time()
     model.fit(train_ds, epochs=end_to_end_epochs, validation_data=validation_ds,
-              callbacks=[tensorboard_callback, model_checkpoint_callback])
+              callbacks=[tensorboard_callback, checkpoint_callback])
     print("Time taken: %.2fs" % (time.time() - start_time))
 
     print("Test dataset evaluation")

@@ -254,6 +254,7 @@ class GANMonitor(keras.callbacks.Callback):
         self.latent_dim = latent_dim
         self.num_classes = num_classes
         self.image_dir = image_dir
+        os.makedirs(image_dir, exist_ok=True)
 
     def on_epoch_end(self, epoch, logs=None):
         random_latent_vectors = tf.random.normal(

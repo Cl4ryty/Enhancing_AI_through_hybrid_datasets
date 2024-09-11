@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime
 import argparse
 import ast
@@ -7,17 +8,17 @@ import tensorflow as tf
 import tensorflow.keras as keras
 
 import model
-from src.utils import load_tfrecord, get_latest_checkpoint
+from utils import load_tfrecord, get_latest_checkpoint
 
 # Define the default values
-batch_size = 256 # set this as high as possible as GANs profit from larger batch sizes
+batch_size = 32 # set this as high as possible as GANs profit from larger batch sizes
 num_channels = 3
 num_classes = 55
 image_size = 224
 latent_dim = 128
 image_dir = "../images"
 checkpoint_dir = '../ckpt'
-EPOCHS = 10
+EPOCHS = 1
 # datasets_to_use = ['../processed_datasets/train1.tfrecord', '../processed_datasets/validation1.tfrecord']
 datasets_to_use = ['../processed_datasets/train_balanced_undersampled.tfrecord']
 
@@ -87,7 +88,7 @@ while len(datasets_to_use)>0:
 
 
 dataset = dataset.apply(prepare_dataset)
-dataset = dataset.take(2)
+
 
 # [TODO] for the first stage undersample all classes to the smallest number of samples of a class to train on a balanced dataset
 
@@ -152,8 +153,11 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
 checkpoint_filepath = os.path.join(checkpoint_dir,
                                    'checkpoint-{epoch:02d}.weights.h5')
 
+# Regular expression to match the checkpoint pattern and extract the epoch number
+pattern = re.compile(r"checkpoint-(\d+).weights.h5")
+
 # Get the latest checkpoint file path
-latest_checkpoint_path = get_latest_checkpoint(checkpoint_dir)
+latest_checkpoint_path = get_latest_checkpoint(checkpoint_dir, pattern)
 
 if latest_checkpoint_path:
     # Load the model from the latest checkpoint

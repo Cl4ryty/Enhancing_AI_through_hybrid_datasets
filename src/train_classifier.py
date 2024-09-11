@@ -1,17 +1,26 @@
+import os
+import re
+from datetime import datetime
+import time
+
 import tensorflow as tf
 
-from src.pipeline import finetuning_pipeline
-from src.utils import load_tfrecord
+from pipeline import finetuning_pipeline
+from utils import load_tfrecord, get_latest_checkpoint
 
 import argparse
 
 # Define the default values
 batch_size = 32
-top_layer_epochs = 30
-end_to_end_epochs = 5
+top_layer_epochs = 1
+end_to_end_epochs = 1
 train_dataset_path = '../train.tfrecord'
 validation_dataset_path = '../validation.tfrecord'
 test_dataset_path = '../test.tfrecord'
+number_of_classes = 55
+
+checkpoint_dir = '../checkpoints'
+os.makedirs(checkpoint_dir, exist_ok=True)
 
 # Set up the argument parser
 parser = argparse.ArgumentParser(description="Script for finetuning a model with specified parameters.")
@@ -59,6 +68,10 @@ test_dataset = test_dataset.shuffle(buffer_size=1000)  # Shuffle the dataset
 test_dataset = test_dataset.batch(batch_size)  # Batch the dataset
 test_dataset = test_dataset.prefetch(
     tf.data.experimental.AUTOTUNE)  # Prefetch for performance
+#
+# train_dataset = train_dataset.take(10)
+# validation_dataset = validation_dataset.take(10)
+# test_dataset = test_dataset.take(10)
 
 # Check the shape of images and labels in one batch
 for images, labels in train_dataset.take(
@@ -71,5 +84,83 @@ base_model = tf.keras.applications.MobileNet(include_top=False,
         weights='imagenet', input_shape=(224, 224, 3), input_tensor=None,
         pooling=None, )
 
-finetuning_pipeline(base_model, train_dataset, validation_dataset, test_dataset,
-                    number_of_classes=55, top_layer_epochs=top_layer_epochs, end_to_end_epochs=end_to_end_epochs)
+
+# Freeze the base_model
+base_model.trainable = False
+
+# Create new model on top
+inputs = tf.keras.Input(shape=(224, 224, 3))
+# preprocess inputs (scaling to expected range of -1 to 1)
+x = tf.keras.applications.mobilenet.preprocess_input(inputs)
+
+# The base model contains batchnorm layers. We want to keep them in inference mode
+# when we unfreeze the base model for fine-tuning, so we make sure that the
+# base_model is running in inference mode here.
+x = base_model(x, training=False)
+x = tf.keras.layers.GlobalAveragePooling2D()(x)
+x = tf.keras.layers.Dropout(0.2)(x)  # Regularize with dropout
+outputs = tf.keras.layers.Dense(number_of_classes)(
+    x)  # units for classifying
+model = tf.keras.Model(inputs, outputs)
+
+model.summary()
+
+model.compile(optimizer=tf.keras.optimizers.Adam(),
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(
+                      from_logits=True), metrics=['accuracy'], )
+
+log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
+                                                      histogram_freq=1)
+
+# Set up the ModelCheckpoint callback to save weights
+checkpoint_filepath = os.path.join(checkpoint_dir, "weights.{epoch:02d}-{val_loss:.2f}.weights.h5")
+checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=checkpoint_filepath,
+        save_weights_only=True,  # Save only the weights
+        monitor='val_accuracy',  # Monitor validation accuracy
+        mode='max',  # Save the model with the maximum validation accuracy
+        save_best_only=True  # Save the best model
+)
+
+# Regular expression to match the checkpoint pattern and extract the epoch number
+pattern = re.compile(r"weights\.(\d{2})-(\d+\.\d+)\.weights\.h5")
+
+# Get the latest checkpoint file path
+latest_checkpoint_path = get_latest_checkpoint(checkpoint_dir, pattern)
+
+if latest_checkpoint_path:
+    # Load the model from the latest checkpoint
+    model.load_weights(latest_checkpoint_path)
+    print(f"Loaded model weights from {latest_checkpoint_path}")
+else:
+    print("No checkpoint found.")
+
+print("Fitting the top layer of the model")
+start_time = time.time()
+
+model.fit(train_dataset, epochs=top_layer_epochs, validation_data=validation_dataset,
+          callbacks=[tensorboard_callback, checkpoint_callback])
+print("Time taken: %.2fs" % (time.time() - start_time))
+
+# Unfreeze the base_model. Note that it keeps running in inference mode
+# since we passed `training=False` when calling it. This means that
+# the batchnorm layers will not update their batch statistics.
+# This prevents the batchnorm layers from undoing all the training
+# we've done so far.
+base_model.trainable = True
+model.summary()
+
+model.compile(optimizer=tf.keras.optimizers.Adam(1e-5),  # Low learning rate
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(
+                      from_logits=True), metrics=['accuracy'], )
+
+print("Fitting the end-to-end model")
+start_time = time.time()
+model.fit(train_dataset, epochs=end_to_end_epochs, initial_epoch=top_layer_epochs, validation_data=validation_dataset,
+          callbacks=[tensorboard_callback, checkpoint_callback])
+print("Time taken: %.2fs" % (time.time() - start_time))
+
+print("Test dataset evaluation")
+result = model.evaluate(test_dataset)
+print("test results:", dict(zip(model.metrics_names, result)))
