@@ -49,8 +49,6 @@ def load_tfrecord(filename):
     return parsed_dataset
 
 
-
-
 def get_latest_checkpoint(checkpoint_dir, pattern):
     os.makedirs(checkpoint_dir, exist_ok=True)
     # List all files in the checkpoint directory
@@ -60,11 +58,12 @@ def get_latest_checkpoint(checkpoint_dir, pattern):
 
     # List to hold matching files with extracted epoch number
     checkpoint_files = []
-
+    start_epoch = 0
     for file in files:
         match = pattern.match(file)
         if match:
             epoch = int(match.group(1))
+            start_epoch = epoch+1
             checkpoint_files.append((epoch, os.path.join(checkpoint_dir, file)))
 
     # Sort the checkpoint files by epoch number
@@ -72,9 +71,9 @@ def get_latest_checkpoint(checkpoint_dir, pattern):
         checkpoint_files.sort(key=lambda x: x[0], reverse=True)
         # Get the latest checkpoint file path
         latest_checkpoint_path = checkpoint_files[0][1]
-        return latest_checkpoint_path
+        return latest_checkpoint_path, start_epoch
     else:
-        return None
+        return None, start_epoch
 
 
 from collections import defaultdict

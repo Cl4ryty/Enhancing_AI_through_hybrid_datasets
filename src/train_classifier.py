@@ -12,14 +12,14 @@ import argparse
 
 # Define the default values
 batch_size = 256
-top_layer_epochs = 1
-end_to_end_epochs = 1
-train_dataset_path = '../processed_datasets/train1.tfrecord'
-validation_dataset_path = '../processed_datasets/validation1.tfrecord'
-test_dataset_path = '../processed_datasets/test1.tfrecord'
+top_layer_epochs = 80
+end_to_end_epochs = 30
+train_dataset_path = '/home/student/h/hakoester/share/processed_datasets/train1.tfrecord'
+validation_dataset_path = '/home/student/h/hakoester/share/processed_datasets/validation1.tfrecord'
+test_dataset_path = '/home/student/h/hakoester/share/processed_datasets/test1.tfrecord'
 number_of_classes = 55
 
-checkpoint_dir = '../checkpoints'
+checkpoint_dir = '/home/student/h/hakoester/share/checkpoints/classifier_real_full/'
 os.makedirs(checkpoint_dir, exist_ok=True)
 
 # Set up the argument parser
@@ -139,8 +139,8 @@ else:
 print("Fitting the top layer of the model")
 start_time = time.time()
 
-model.fit(train_dataset, epochs=top_layer_epochs, validation_data=validation_dataset,
-          callbacks=[tensorboard_callback, checkpoint_callback])
+#model.fit(train_dataset, epochs=top_layer_epochs, validation_data=validation_dataset,
+#          callbacks=[tensorboard_callback, checkpoint_callback])
 print("Time taken: %.2fs" % (time.time() - start_time))
 
 # Unfreeze the base_model. Note that it keeps running in inference mode
@@ -157,12 +157,10 @@ model.compile(optimizer=tf.keras.optimizers.Adam(1e-5),  # Low learning rate
 
 print("Fitting the end-to-end model")
 start_time = time.time()
-model.fit(train_dataset, epochs=end_to_end_epochs, initial_epoch=top_layer_epochs, validation_data=validation_dataset,
+model.fit(train_dataset, epochs=end_to_end_epochs+top_layer_epochs, initial_epoch=top_layer_epochs, validation_data=validation_dataset,
           callbacks=[tensorboard_callback, checkpoint_callback])
 print("Time taken: %.2fs" % (time.time() - start_time))
 
 print("Test dataset evaluation")
 result = model.evaluate(test_dataset)
 print("test results:", dict(zip(model.metrics_names, result)))
-
-import tensorflow as tf; print('all devices', tf.config.list_physical_devices(),'gpus', tf.config.list_physical_devices('GPU'))

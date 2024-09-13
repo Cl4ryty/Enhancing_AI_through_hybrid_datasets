@@ -4,23 +4,36 @@ from datetime import datetime
 import argparse
 import ast
 
+os.environ['XLA_FLAGS'] = '/appl/spack/opt/spack/linux-rocky8-zen/gcc-8.5.0/cuda-11.8.0-x32erfzo6xl2qgbp5enezl53wwiingmt/nvvm'
+print ("Working directory:" , os.getcwd()) 
+
 import tensorflow as tf
 import tensorflow.keras as keras
 
 import model
 from utils import load_tfrecord, get_latest_checkpoint
 
+print("tf gpus:", tf.config.list_physical_devices('GPU'))
+
 # Define the default values
-batch_size = 32 # set this as high as possible as GANs profit from larger batch sizes
+batch_size = 128 # set this as high as possible as GANs profit from larger batch sizes
 num_channels = 3
 num_classes = 55
 image_size = 224
 latent_dim = 128
-image_dir = "../images"
-checkpoint_dir = '../ckpt'
-EPOCHS = 1
+image_dir = "/home/student/h/hakoester/share/s1_gpu_images"
+checkpoint_dir = '/home/student/h/hakoester/share/checkpoints/gan_s1_gpu'
+
+# image_dir = "../s1_gpu_images"
+# checkpoint_dir = '../checkpoints/gan_s1'
+EPOCHS = 200
+start_epoch = 0
 # datasets_to_use = ['../processed_datasets/train1.tfrecord', '../processed_datasets/validation1.tfrecord']
-datasets_to_use = ['../processed_datasets/train_balanced_undersampled.tfrecord']
+datasets_to_use = ['/home/student/h/hakoester/share/train_balanced_undersampled.tfrecord']
+# datasets_to_use = ['/home/hannah/Documents/A0_uni/master/S2/EnhancingAI/project_test/project_test/processed_datasets/train_balanced_undersampled.tfrecord']
+
+
+discriminator_extra_steps = 10
 
 # Set up the argument parser
 parser = argparse.ArgumentParser(description="Script for training a model with specified parameters.")
@@ -67,9 +80,7 @@ def prepare_dataset(data):
     :return: preprocessed dataset
     """
 
-    data = data.map(lambda image, target: (image,
-                                           tf.keras.utils.to_categorical(target,
-                                                                         num_classes=num_classes)))
+    data = data.map(lambda image, target: (image, tf.one_hot(target, depth=num_classes)))
     data = data.map(
             lambda image, target: (tf.cast(image, tf.float32) / 255.0, target))
     # data = data.cache()
@@ -80,15 +91,21 @@ def prepare_dataset(data):
 
 
 dataset = load_tfrecord(datasets_to_use.pop(0))
+# i = 0
+# for y,x in dataset:
+#     print(i)
+#     i+=1
+#     print(tf.keras.utils.to_categorical(x,num_classes=num_classes))
+
 
 # concatenate the datasets to train the GAN on all the data
-while len(datasets_to_use)>0:
-    concatenate_dataset = load_tfrecord(datasets_to_use.pop(0))
-    dataset = dataset.concatenate(concatenate_dataset)
+# while len(datasets_to_use)>0:
+#     concatenate_dataset = load_tfrecord(datasets_to_use.pop(0))
+#     dataset = dataset.concatenate(concatenate_dataset)
 
 
 dataset = dataset.apply(prepare_dataset)
-
+#dataset = dataset.take(10)
 
 # [TODO] for the first stage undersample all classes to the smallest number of samples of a class to train on a balanced dataset
 
@@ -113,9 +130,9 @@ print("generator", generator.summary())
 
 # Instantiate the optimizer for both networks
 # (learning_rate=0.0002, beta_1=0.5 are recommended)
-generator_optimizer = keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5,
+generator_optimizer = keras.optimizers.Adam(learning_rate=0.0001, beta_1=0.5,
                                             beta_2=0.9)
-discriminator_optimizer = keras.optimizers.Adam(learning_rate=0.0002,
+discriminator_optimizer = keras.optimizers.Adam(learning_rate=0.0001,
                                                 beta_1=0.5, beta_2=0.9)
 
 
@@ -139,7 +156,7 @@ cbk = model.GANMonitor(image_dir=image_dir, num_classes=num_classes, num_img=3,
 wgan = model.ConditionalWGAN(discriminator=discriminator, generator=generator,
                              latent_dim=latent_dim, image_size=image_size,
                              num_classes=num_classes,
-                             discriminator_extra_steps=3, )
+                             discriminator_extra_steps=discriminator_extra_steps, )
 
 # Compile the wgan model
 wgan.compile(d_optimizer=discriminator_optimizer,
@@ -157,9 +174,10 @@ checkpoint_filepath = os.path.join(checkpoint_dir,
 pattern = re.compile(r"checkpoint-(\d+).weights.h5")
 
 # Get the latest checkpoint file path
-latest_checkpoint_path = get_latest_checkpoint(checkpoint_dir, pattern)
+latest_checkpoint_path, s_epoch = get_latest_checkpoint(checkpoint_dir, pattern)
 
 if latest_checkpoint_path:
+    start_epoch = s_epoch
     # Load the model from the latest checkpoint
     wgan.load_weights(latest_checkpoint_path)
     print(f"Loaded model weights from {latest_checkpoint_path}")
@@ -172,5 +190,5 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         save_weights_only=True, mode='min', verbose=1, save_best_only=False)
 
 print("Fitting the GAN")
-wgan.fit(dataset, batch_size=batch_size, epochs=EPOCHS,
+wgan.fit(dataset, batch_size=batch_size, epochs=EPOCHS+start_epoch, initial_epoch=start_epoch,
          callbacks=[tensorboard_callback, model_checkpoint_callback, cbk])

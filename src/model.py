@@ -3,7 +3,6 @@ import os
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras import layers
-from tensorflow.keras import ops
 
 
 def conv_block(x, filters, activation, kernel_size=(3, 3), strides=(1, 1),
@@ -93,7 +92,6 @@ class ConditionalWGAN(keras.Model):
         self.latent_dim = latent_dim
         self.d_steps = discriminator_extra_steps
         self.gp_weight = gp_weight
-        self.seed_generator = keras.random.SeedGenerator(1337)
         self.gen_loss_tracker = keras.metrics.Mean(name="generator_loss")
         self.disc_loss_tracker = keras.metrics.Mean(name="discriminator_loss")
         self.image_size = image_size
@@ -161,23 +159,22 @@ class ConditionalWGAN(keras.Model):
     def train_step(self, data):
         # Unpack the data.
         real_images, one_hot_labels = data
+        batch_size = tf.shape(real_images)[0]
 
         # Add dummy dimensions to the labels so that they can be concatenated with
         # the images. This is for the discriminator.
         image_one_hot_labels = one_hot_labels[:, :, None, None]
-        image_one_hot_labels = ops.repeat(image_one_hot_labels,
+        image_one_hot_labels = tf.repeat(image_one_hot_labels,
                 repeats=[self.image_size * self.image_size])
-        image_one_hot_labels = ops.reshape(image_one_hot_labels,
+        image_one_hot_labels = tf.reshape(image_one_hot_labels,
                 (-1, self.image_size, self.image_size, self.num_classes))
 
         for i in range(self.d_steps):
             # Sample random points in the latent space and concatenate the labels.
             # This is for the generator.
-            batch_size = ops.shape(real_images)[0]
-            random_latent_vectors = keras.random.normal(
-                    shape=(batch_size, self.latent_dim),
-                    seed=self.seed_generator)
-            random_vector_labels = ops.concatenate(
+            random_latent_vectors = tf.random.normal(
+                    shape=(batch_size, self.latent_dim))
+            random_vector_labels = tf.concat(
                     [random_latent_vectors, one_hot_labels], axis=1)
 
             # Decode the noise (guided by labels) to fake images.
@@ -186,9 +183,9 @@ class ConditionalWGAN(keras.Model):
 
             # Combine them with real images. Note that we are concatenating the labels
             # with these images here.
-            fake_image_and_labels = ops.concatenate(
+            fake_image_and_labels = tf.concat(
                     [generated_images, image_one_hot_labels], -1)
-            real_image_and_labels = ops.concatenate(
+            real_image_and_labels = tf.concat(
                     [real_images, image_one_hot_labels], -1)
 
             with tf.GradientTape() as tape:
@@ -216,19 +213,19 @@ class ConditionalWGAN(keras.Model):
                     zip(d_gradient, self.discriminator.trainable_variables))
 
         # Sample random points in the latent space.
-        random_latent_vectors = keras.random.normal(
-                shape=(batch_size, self.latent_dim), seed=self.seed_generator)
-        random_vector_labels = ops.concatenate(
+        random_latent_vectors = tf.random.normal(
+                shape=(batch_size, self.latent_dim))
+        random_vector_labels = tf.concat(
                 [random_latent_vectors, one_hot_labels], axis=1)
 
         # Assemble labels that say "all real images".
-        misleading_labels = ops.zeros((batch_size, 1))
+        misleading_labels = tf.zeros((batch_size, 1))
 
         # Train the generator (note that we should *not* update the weights
         # of the discriminator)!
         with tf.GradientTape() as tape:
             fake_images = self.generator(random_vector_labels, training=True)
-            fake_image_and_labels = ops.concatenate(
+            fake_image_and_labels = tf.concat(
                     [fake_images, image_one_hot_labels], -1)
             predicted_labels = self.discriminator(fake_image_and_labels,
                                                   training=True)
@@ -264,12 +261,11 @@ class GANMonitor(keras.callbacks.Callback):
                                  value=1)  # always generate images for class 1
         one_hot_labels = tf.one_hot(one_hot_labels, depth=self.num_classes)
 
-        random_latent_vectors = keras.random.normal(
-                shape=(self.num_img, self.latent_dim),
-                seed=keras.random.SeedGenerator(1337))
+        random_latent_vectors = tf.random.normal(
+                shape=(self.num_img, self.latent_dim))
         print("one hot label shape", one_hot_labels.shape, "random shape",
               random_latent_vectors.shape)
-        random_vector_labels = ops.concatenate(
+        random_vector_labels = tf.concat(
                 [random_latent_vectors, one_hot_labels], axis=1)
 
         # Decode the noise (guided by labels) to fake images.
