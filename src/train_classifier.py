@@ -11,12 +11,12 @@ from utils import load_tfrecord, get_latest_checkpoint
 import argparse
 
 # Define the default values
-batch_size = 32
+batch_size = 256
 top_layer_epochs = 1
 end_to_end_epochs = 1
-train_dataset_path = '../train.tfrecord'
-validation_dataset_path = '../validation.tfrecord'
-test_dataset_path = '../test.tfrecord'
+train_dataset_path = '../processed_datasets/train1.tfrecord'
+validation_dataset_path = '../processed_datasets/validation1.tfrecord'
+test_dataset_path = '../processed_datasets/test1.tfrecord'
 number_of_classes = 55
 
 checkpoint_dir = '../checkpoints'
@@ -164,3 +164,5 @@ print("Time taken: %.2fs" % (time.time() - start_time))
 print("Test dataset evaluation")
 result = model.evaluate(test_dataset)
 print("test results:", dict(zip(model.metrics_names, result)))
+
+import tensorflow as tf; print('all devices', tf.config.list_physical_devices(),'gpus', tf.config.list_physical_devices('GPU'))

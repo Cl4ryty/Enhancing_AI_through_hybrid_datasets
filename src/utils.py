@@ -46,7 +46,7 @@ def load_tfrecord(filename):
     parsed_dataset = raw_dataset.map(parse_tfrecord)
     parsed_dataset = parsed_dataset.map(lambda x: (
     tf.image.decode_jpeg(x['image']), x['label']))  # Decode the image
-    return parsed_dataset    return parsed_dataset
+    return parsed_dataset
 
 
 
