@@ -97,69 +97,19 @@ class ConditionalWGAN(keras.Model):
         self.image_size = image_size
         self.num_classes = num_classes
 
-    def get_config(self):
-        base_config = super().get_config()
-        config = {"discriminator": tf.keras.utils.serialize_keras_object(
-                self.discriminator),
-                "generator": tf.keras.utils.serialize_keras_object(
-                        self.generator),
-                "latent_dim": tf.keras.utils.serialize_keras_object(
-                        self.latent_dim),
-                "discriminator_extra_steps": tf.keras.utils.serialize_keras_object(
-                        self.d_steps), }
-        return {**base_config, **config}
-
-    @classmethod
-    def from_config(cls, config):
-        config["discriminator"] = tf.keras.utils.deserialize_keras_object(
-                config["discriminator"])
-        config["generator"] = tf.keras.utils.deserialize_keras_object(
-                config["generator"])
-        config["latent_dim"] = tf.keras.utils.deserialize_keras_object(
-                config["latent_dim"])
-        config[
-            "discriminator_extra_steps"] = tf.keras.utils.deserialize_keras_object(
-                config["discriminator_extra_steps"])
-        return cls(**config)
-
     @property
     def metrics(self):
         return [self.gen_loss_tracker, self.disc_loss_tracker]
 
-    def compile(self, d_optimizer, g_optimizer, d_loss_fn, g_loss_fn):
+    def compile(self, d_optimizer, g_optimizer, loss_fn):
         super().compile()
         self.d_optimizer = d_optimizer
         self.g_optimizer = g_optimizer
-        self.d_loss_fn = d_loss_fn
-        self.g_loss_fn = g_loss_fn
-
-    def gradient_penalty(self, batch_size, real_images, fake_images):
-        """Calculates the gradient penalty.
-
-        This loss is calculated on an interpolated image
-        and added to the discriminator loss.
-        """
-        # Get the interpolated image
-        alpha = tf.random.uniform([batch_size, 1, 1, 1], 0.0, 1.0)
-        diff = fake_images - real_images
-        interpolated = real_images + alpha * diff
-
-        with tf.GradientTape() as gp_tape:
-            gp_tape.watch(interpolated)
-            # 1. Get the discriminator output for this interpolated image.
-            pred = self.discriminator(interpolated, training=True)
-
-        # 2. Calculate the gradients w.r.t to this interpolated image.
-        grads = gp_tape.gradient(pred, [interpolated])[0]
-        # 3. Calculate the norm of the gradients.
-        norm = tf.sqrt(tf.reduce_sum(tf.square(grads), axis=[1, 2, 3]))
-        gp = tf.reduce_mean((norm - 1.0) ** 2)
-        return gp
+        self.loss_fn = loss_fn
 
     def train_step(self, data):
         # Unpack the data.
         real_images, one_hot_labels = data
-        batch_size = tf.shape(real_images)[0]
 
         # Add dummy dimensions to the labels so that they can be concatenated with
         # the images. This is for the discriminator.
@@ -169,48 +119,37 @@ class ConditionalWGAN(keras.Model):
         image_one_hot_labels = tf.reshape(image_one_hot_labels,
                 (-1, self.image_size, self.image_size, self.num_classes))
 
-        for i in range(self.d_steps):
-            # Sample random points in the latent space and concatenate the labels.
-            # This is for the generator.
-            random_latent_vectors = tf.random.normal(
-                    shape=(batch_size, self.latent_dim))
-            random_vector_labels = tf.concat(
-                    [random_latent_vectors, one_hot_labels], axis=1)
+        # Sample random points in the latent space and concatenate the labels.
+        # This is for the generator.
+        batch_size = tf.shape(real_images)[0]
+        random_latent_vectors = tf.random.normal(
+                shape=(batch_size, self.latent_dim))
+        random_vector_labels = tf.concat(
+                [random_latent_vectors, one_hot_labels], axis=1)
 
-            # Decode the noise (guided by labels) to fake images.
-            generated_images = self.generator(random_vector_labels,
-                                              training=False)
+        # Decode the noise (guided by labels) to fake images.
+        generated_images = self.generator(random_vector_labels)
 
-            # Combine them with real images. Note that we are concatenating the labels
-            # with these images here.
-            fake_image_and_labels = tf.concat(
-                    [generated_images, image_one_hot_labels], -1)
-            real_image_and_labels = tf.concat(
-                    [real_images, image_one_hot_labels], -1)
+        # Combine them with real images. Note that we are concatenating the labels
+        # with these images here.
+        fake_image_and_labels = tf.concat(
+                [generated_images, image_one_hot_labels], -1)
+        real_image_and_labels = tf.concat(
+                [real_images, image_one_hot_labels], -1)
+        combined_images = tf.concat(
+                [fake_image_and_labels, real_image_and_labels], axis=0)
 
-            with tf.GradientTape() as tape:
-                # Get the logits for the fake images
-                fake_logits = self.discriminator(fake_image_and_labels,
-                                                 training=True)
-                # Get the logits for the real images
-                real_logits = self.discriminator(real_image_and_labels,
-                                                 training=True)
+        # Assemble labels discriminating real from fake images.
+        labels = tf.concat(
+                [tf.ones((batch_size, 1)), tf.zeros((batch_size, 1))], axis=0)
 
-                # Calculate the discriminator loss using the fake and real image logits
-                d_cost = self.d_loss_fn(real_img=real_logits,
-                                        fake_img=fake_logits)
-                # Calculate the gradient penalty
-                gp = self.gradient_penalty(batch_size, real_image_and_labels,
-                                           fake_image_and_labels)
-                # Add the gradient penalty to the original discriminator loss
-                d_loss = d_cost + gp * self.gp_weight
-
-            # Get the gradients w.r.t the discriminator loss
-            d_gradient = tape.gradient(d_loss,
-                                       self.discriminator.trainable_variables)
-            # Update the weights of the discriminator using the discriminator optimizer
-            self.d_optimizer.apply_gradients(
-                    zip(d_gradient, self.discriminator.trainable_variables))
+        # Train the discriminator.
+        with tf.GradientTape() as tape:
+            predictions = self.discriminator(combined_images)
+            d_loss = self.loss_fn(labels, predictions)
+        grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
+        self.d_optimizer.apply_gradients(
+                zip(grads, self.discriminator.trainable_weights))
 
         # Sample random points in the latent space.
         random_latent_vectors = tf.random.normal(
@@ -224,19 +163,14 @@ class ConditionalWGAN(keras.Model):
         # Train the generator (note that we should *not* update the weights
         # of the discriminator)!
         with tf.GradientTape() as tape:
-            fake_images = self.generator(random_vector_labels, training=True)
+            fake_images = self.generator(random_vector_labels)
             fake_image_and_labels = tf.concat(
                     [fake_images, image_one_hot_labels], -1)
-            predicted_labels = self.discriminator(fake_image_and_labels,
-                                                  training=True)
-            # Calculate the generator loss
-            g_loss = self.g_loss_fn(misleading_labels, predicted_labels)
-
-        # Get the gradients w.r.t the generator loss
-        gen_gradient = tape.gradient(g_loss, self.generator.trainable_variables)
-        # Update the weights of the generator using the generator optimizer
+            predictions = self.discriminator(fake_image_and_labels)
+            g_loss = self.loss_fn(misleading_labels, predictions)
+        grads = tape.gradient(g_loss, self.generator.trainable_weights)
         self.g_optimizer.apply_gradients(
-                zip(gen_gradient, self.generator.trainable_variables))
+            zip(grads, self.generator.trainable_weights))
 
         # Monitor loss.
         self.gen_loss_tracker.update_state(g_loss)

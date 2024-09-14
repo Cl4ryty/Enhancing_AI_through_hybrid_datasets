@@ -4,6 +4,7 @@ from datetime import datetime
 import argparse
 import ast
 
+# os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 os.environ['XLA_FLAGS'] = '/appl/spack/opt/spack/linux-rocky8-zen/gcc-8.5.0/cuda-11.8.0-x32erfzo6xl2qgbp5enezl53wwiingmt/nvvm'
 print ("Working directory:" , os.getcwd()) 
 
@@ -16,7 +17,7 @@ from utils import load_tfrecord, get_latest_checkpoint
 print("tf gpus:", tf.config.list_physical_devices('GPU'))
 
 # Define the default values
-batch_size = 128 # set this as high as possible as GANs profit from larger batch sizes
+batch_size = 256 # set this as high as possible as GANs profit from larger batch sizes
 num_channels = 3
 num_classes = 55
 image_size = 224
@@ -33,7 +34,7 @@ datasets_to_use = ['/home/student/h/hakoester/share/train_balanced_undersampled.
 # datasets_to_use = ['/home/hannah/Documents/A0_uni/master/S2/EnhancingAI/project_test/project_test/processed_datasets/train_balanced_undersampled.tfrecord']
 
 
-discriminator_extra_steps = 10
+discriminator_extra_steps = 3
 
 # Set up the argument parser
 parser = argparse.ArgumentParser(description="Script for training a model with specified parameters.")
@@ -128,26 +129,6 @@ generator = model.get_generator_model(generator_in_channels)
 print("discriminator", discriminator.summary())
 print("generator", generator.summary())
 
-# Instantiate the optimizer for both networks
-# (learning_rate=0.0002, beta_1=0.5 are recommended)
-generator_optimizer = keras.optimizers.Adam(learning_rate=0.0001, beta_1=0.5,
-                                            beta_2=0.9)
-discriminator_optimizer = keras.optimizers.Adam(learning_rate=0.0001,
-                                                beta_1=0.5, beta_2=0.9)
-
-
-# Define the loss functions for the discriminator,
-# which should be (fake_loss - real_loss).
-# We will add the gradient penalty later to this loss function.
-def discriminator_loss(real_img, fake_img):
-    real_loss = tf.reduce_mean(real_img)
-    fake_loss = tf.reduce_mean(fake_img)
-    return fake_loss - real_loss
-
-
-# Define the loss functions for the generator.
-generator_loss = keras.losses.BinaryCrossentropy(from_logits=True)
-
 # Instantiate the customer `GANMonitor` Keras callback.
 cbk = model.GANMonitor(image_dir=image_dir, num_classes=num_classes, num_img=3,
                        latent_dim=latent_dim)
@@ -159,9 +140,11 @@ wgan = model.ConditionalWGAN(discriminator=discriminator, generator=generator,
                              discriminator_extra_steps=discriminator_extra_steps, )
 
 # Compile the wgan model
-wgan.compile(d_optimizer=discriminator_optimizer,
-             g_optimizer=generator_optimizer, g_loss_fn=generator_loss,
-             d_loss_fn=discriminator_loss, )
+wgan.compile(
+    d_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+    g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+    loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
+)
 
 log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
