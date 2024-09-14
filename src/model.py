@@ -97,6 +97,31 @@ class ConditionalWGAN(keras.Model):
         self.image_size = image_size
         self.num_classes = num_classes
 
+    def get_config(self):
+        base_config = super().get_config()
+        config = {"discriminator": tf.keras.utils.serialize_keras_object(
+                self.discriminator),
+                "generator": tf.keras.utils.serialize_keras_object(
+                        self.generator),
+                "latent_dim": tf.keras.utils.serialize_keras_object(
+                        self.latent_dim),
+                "discriminator_extra_steps": tf.keras.utils.serialize_keras_object(
+                        self.d_steps), }
+        return {**base_config, **config}
+
+    @classmethod
+    def from_config(cls, config):
+        config["discriminator"] = tf.keras.utils.deserialize_keras_object(
+                config["discriminator"])
+        config["generator"] = tf.keras.utils.deserialize_keras_object(
+                config["generator"])
+        config["latent_dim"] = tf.keras.utils.deserialize_keras_object(
+                config["latent_dim"])
+        config[
+            "discriminator_extra_steps"] = tf.keras.utils.deserialize_keras_object(
+                config["discriminator_extra_steps"])
+        return cls(**config)
+
     @property
     def metrics(self):
         return [self.gen_loss_tracker, self.disc_loss_tracker]
@@ -180,38 +205,37 @@ class ConditionalWGAN(keras.Model):
 
 
 class GANMonitor(keras.callbacks.Callback):
-    def __init__(self, image_dir, num_classes, num_img=6, latent_dim=128):
+    def __init__(self, image_dir, num_classes, num_img=6, latent_dim=128, save_frequency=10):
         self.num_img = num_img
         self.latent_dim = latent_dim
         self.num_classes = num_classes
         self.image_dir = image_dir
+        self.save_frequency = save_frequency
         os.makedirs(image_dir, exist_ok=True)
 
     def on_epoch_end(self, epoch, logs=None):
-        random_latent_vectors = tf.random.normal(
-            shape=(self.num_img, self.latent_dim))
+        if epoch % self.save_frequency == 0:
+            one_hot_labels = tf.fill([self.num_img],
+                                     value=1)  # always generate images for class 1
+            one_hot_labels = tf.one_hot(one_hot_labels, depth=self.num_classes)
 
-        one_hot_labels = tf.fill([self.num_img],
-                                 value=1)  # always generate images for class 1
-        one_hot_labels = tf.one_hot(one_hot_labels, depth=self.num_classes)
+            random_latent_vectors = tf.random.normal(
+                    shape=(self.num_img, self.latent_dim))
+            print("one hot label shape", one_hot_labels.shape, "random shape",
+                  random_latent_vectors.shape)
+            random_vector_labels = tf.concat(
+                    [random_latent_vectors, one_hot_labels], axis=1)
 
-        random_latent_vectors = tf.random.normal(
-                shape=(self.num_img, self.latent_dim))
-        print("one hot label shape", one_hot_labels.shape, "random shape",
-              random_latent_vectors.shape)
-        random_vector_labels = tf.concat(
-                [random_latent_vectors, one_hot_labels], axis=1)
+            # Decode the noise (guided by labels) to fake images.
+            generated_images = self.model.generator(random_vector_labels,
+                                                    training=False)
 
-        # Decode the noise (guided by labels) to fake images.
-        generated_images = self.model.generator(random_vector_labels,
-                                                training=False)
+            generated_images = (generated_images * 127.5) + 127.5
 
-        generated_images = (generated_images * 127.5) + 127.5
-
-        for i in range(self.num_img):
-            img = generated_images[i].numpy()
-            img = keras.utils.array_to_img(img)
-            image_path = os.path.join(self.image_dir,
-                                      "generated_img_{i}_{epoch}.png")
-            print("saving images to path")
-            img.save(image_path.format(i=i, epoch=epoch))
+            for i in range(self.num_img):
+                img = generated_images[i].numpy()
+                img = keras.utils.array_to_img(img)
+                image_path = os.path.join(self.image_dir,
+                                          "generated_img_{epoch}_{i}.png")
+                print("saving images to path")
+                img.save(image_path.format(i=i, epoch=epoch))

@@ -22,19 +22,20 @@ num_channels = 3
 num_classes = 55
 image_size = 224
 latent_dim = 128
-image_dir = "/home/student/h/hakoester/share/s1_gpu_images"
-checkpoint_dir = '/home/student/h/hakoester/share/checkpoints/gan_s1_gpu'
+image_dir = "/home/student/h/hakoester/share/cgan_s1_images"
+checkpoint_dir = '/home/student/h/hakoester/share/checkpoints/cgan_s1'
 
 # image_dir = "../s1_gpu_images"
 # checkpoint_dir = '../checkpoints/gan_s1'
-EPOCHS = 200
+EPOCHS = 4000
 start_epoch = 0
 # datasets_to_use = ['../processed_datasets/train1.tfrecord', '../processed_datasets/validation1.tfrecord']
 datasets_to_use = ['/home/student/h/hakoester/share/train_balanced_undersampled.tfrecord']
 # datasets_to_use = ['/home/hannah/Documents/A0_uni/master/S2/EnhancingAI/project_test/project_test/processed_datasets/train_balanced_undersampled.tfrecord']
 
+save_frequency = 25
 
-discriminator_extra_steps = 3
+discriminator_extra_steps = 1
 
 # Set up the argument parser
 parser = argparse.ArgumentParser(description="Script for training a model with specified parameters.")
@@ -131,7 +132,7 @@ print("generator", generator.summary())
 
 # Instantiate the customer `GANMonitor` Keras callback.
 cbk = model.GANMonitor(image_dir=image_dir, num_classes=num_classes, num_img=3,
-                       latent_dim=latent_dim)
+                       latent_dim=latent_dim, save_frequency=save_frequency)
 
 # Get the wgan model
 wgan = model.ConditionalWGAN(discriminator=discriminator, generator=generator,
@@ -170,7 +171,7 @@ else:
 print(wgan.metrics_names)
 model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath, monitor='generator_loss',
-        save_weights_only=True, mode='min', verbose=1, save_best_only=False)
+        save_weights_only=True, mode='min', verbose=1, save_best_only=False, save_freq=save_frequency)
 
 print("Fitting the GAN")
 wgan.fit(dataset, batch_size=batch_size, epochs=EPOCHS+start_epoch, initial_epoch=start_epoch,
