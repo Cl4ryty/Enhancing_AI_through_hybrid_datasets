@@ -1,6 +1,6 @@
 import os
 
-# os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 import tensorflow as tf
 import tensorflow.keras as keras
 
@@ -43,17 +43,12 @@ num_channels = 3
 num_classes = 55
 image_size = 224
 latent_dim = 128
-image_dir = "minority_synthetic_data2"
+image_dir = "minority_new"
 checkpoint_path = '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/cgan/checkpoint-6375.weights.h5'
 
 # define classes and numbers of samples to generate
 # this is a dictionary with classes as keys and numbers of samples for the classes as values
-to_generate = {1: 24, 2: 0, 3: 0, 4: 127, 5: 0, 8: 151, 9: 60, 11: 160, 14: 0,
-               15: 55, 18: 0, 19: 0, 20: 153, 21: 0, 23: 0, 24: 0, 26: 90,
-               27: 116, 28: 153, 29: 150, 30: 152, 31: 131, 32: 127, 33: 44,
-               34: 28, 35: 70, 36: 139, 37: 114, 38: 157, 39: 140, 40: 108,
-               41: 155, 42: 120, 43: 99, 44: 70, 45: 20, 46: 103, 47: 148,
-               48: 0, 49: 71, 50: 138, 51: 96, 52: 109, 54: 80}
+to_generate = {1: 24, 2: 0, 3: 0, 4: 127, 5: 0, 8: 151, 9: 60, 11: 160, 14: 0, 15: 55, 18: 0, 19: 0, 20: 153, 21: 0, 23: 0, 24: 0, 26: 90, 27: 116, 28: 153, 29: 150, 30: 152, 31: 131, 32: 127, 33: 44, 34: 28, 35: 70, 36: 139, 37: 114, 38: 157, 39: 140, 40: 108, 41: 155, 42: 120, 43: 99, 44: 70, 45: 20, 46: 103, 47: 148, 48: 0, 49: 71, 50: 138, 51: 96, 52: 109, 54: 80}
 
 # set up the model
 generator_in_channels = latent_dim + num_classes

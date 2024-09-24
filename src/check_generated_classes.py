@@ -1,4 +1,5 @@
-# os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 import tensorflow as tf
 import tensorflow.keras as keras
 from matplotlib import pyplot as plt
@@ -77,7 +78,7 @@ num_classes = 55
 image_size = 224
 latent_dim = 128
 image_dir = "images_generated"
-checkpoint_path = '../checkpoints/gan_s1_test/checkpoint-01.weights.h5'
+checkpoint_path = '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/cgan/checkpoint-6274.weights.h5'
 dataset_path = '../processed_datasets/train_balanced_undersampled.tfrecord'
 num_samples = 5
 

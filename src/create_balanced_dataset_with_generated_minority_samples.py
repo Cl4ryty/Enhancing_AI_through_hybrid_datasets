@@ -25,8 +25,14 @@ print(list(zip(labels, counts)))
 
 # exclude classes with too few samples
 mask = counts >= minority_cutoff
+
+excluded_classes = labels[counts<minority_cutoff]
+print("classes to exclude", list(excluded_classes))
+print("number of excluded classes", len(excluded_classes))
 labels = labels[mask]
 counts = counts[mask]
+
+print("used labels and counts", list(zip(labels, counts)))
 
 # get the maximum number of samples for a class - this is the number of samples all classes should have in the end
 samples_to_reach = np.max(counts)

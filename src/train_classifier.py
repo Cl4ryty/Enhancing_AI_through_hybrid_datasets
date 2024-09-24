@@ -19,8 +19,9 @@ validation_dataset_path = '/home/student/h/hakoester/share/processed_datasets/va
 test_dataset_path = '/home/student/h/hakoester/share/processed_datasets/test1.tfrecord'
 number_of_classes = 55
 
+log_name = ''
+
 checkpoint_dir = '/home/student/h/hakoester/share/checkpoints/classifier_real_full/'
-os.makedirs(checkpoint_dir, exist_ok=True)
 
 # Set up the argument parser
 parser = argparse.ArgumentParser(description="Script for finetuning a model with specified parameters.")
@@ -36,17 +37,35 @@ parser.add_argument('--validation_dataset_path', type=str, default=validation_da
                     help='Path to the validation dataset (default: {})'.format(validation_dataset_path))
 parser.add_argument('--test_dataset_path', type=str, default=test_dataset_path,
                     help='Path to the test dataset (default: {})'.format(test_dataset_path))
+parser.add_argument('--checkpoint_dir', type=str, default=checkpoint_dir)
+
+parser.add_argument('--log_name', type=str, default=log_name)
 
 # Parse the command-line arguments
 args = parser.parse_args()
 
-print("Batch Size:", args.batch_size)
-print("Top Layer Epochs:", args.top_layer_epochs)
-print("End-to-End Epochs:", args.end_to_end_epochs)
-print("Training Dataset Path:", args.train_dataset_path)
-print("Validation Dataset Path:", args.validation_dataset_path)
-print("Test Dataset Path:", args.test_dataset_path)
+# Now set variables with the same names
+batch_size = args.batch_size
+top_layer_epochs = args.top_layer_epochs
+end_to_end_epochs = args.end_to_end_epochs
+train_dataset_path = args.train_dataset_path
+validation_dataset_path = args.validation_dataset_path
+test_dataset_path = args.test_dataset_path
+log_name = args.log_name
+checkpoint_dir = args.checkpoint_dir
 
+
+os.makedirs(checkpoint_dir, exist_ok=True)
+
+# Print the variables to check their values
+print("Batch Size:", batch_size)
+print("Top Layer Epochs:", top_layer_epochs)
+print("End-to-End Epochs:", end_to_end_epochs)
+print("Training Dataset Path:", train_dataset_path)
+print("Validation Dataset Path:", validation_dataset_path)
+print("Test Dataset Path:", test_dataset_path)
+print("Log Name:", log_name)
+print("Checkpoint Dir:", checkpoint_dir)
 
 train_dataset = load_tfrecord(train_dataset_path)
 validation_dataset = load_tfrecord(validation_dataset_path)
@@ -109,7 +128,7 @@ model.compile(optimizer=tf.keras.optimizers.Adam(),
               loss=tf.keras.losses.SparseCategoricalCrossentropy(
                       from_logits=True), metrics=['accuracy'], )
 
-log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+log_dir = os.path.join("logs/fit", log_name, datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
                                                       histogram_freq=1)
 
@@ -127,9 +146,23 @@ checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 pattern = re.compile(r"weights\.(\d{2})-(\d+\.\d+)\.weights\.h5")
 
 # Get the latest checkpoint file path
-latest_checkpoint_path = get_latest_checkpoint(checkpoint_dir, pattern)
+latest_checkpoint_path, start_epoch = get_latest_checkpoint(checkpoint_dir, pattern)
+
+# # Calculate the adjusted epochs
+# if start_epoch <= top_layer_epochs:
+#     top_layer_epochs -= start_epoch
+# else:
+#     top_layer_epochs = 0  # No epochs left for top layer training if started beyond that
+#     start_epoch -= top_layer_epochs
+#
+# if start_epoch <= end_to_end_epochs:
+#     end_to_end_epochs -= start_epoch
+# else:
+#     end_to_end_epochs = 0  # No epochs left for end-to-end training if started beyond that
+
 
 if latest_checkpoint_path:
+    print("latest checkpoint path", latest_checkpoint_path)
     # Load the model from the latest checkpoint
     model.load_weights(latest_checkpoint_path)
     print(f"Loaded model weights from {latest_checkpoint_path}")
@@ -139,8 +172,8 @@ else:
 print("Fitting the top layer of the model")
 start_time = time.time()
 
-#model.fit(train_dataset, epochs=top_layer_epochs, validation_data=validation_dataset,
-#          callbacks=[tensorboard_callback, checkpoint_callback])
+model.fit(train_dataset, epochs=top_layer_epochs, validation_data=validation_dataset,
+         callbacks=[tensorboard_callback, checkpoint_callback])
 print("Time taken: %.2fs" % (time.time() - start_time))
 
 # Unfreeze the base_model. Note that it keeps running in inference mode

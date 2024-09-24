@@ -87,13 +87,12 @@ image_size = 224
 latent_dim = 128
 image_dir = "images_generated"
 checkpoints = [
+        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/checkpoints/cgan_s2_1/checkpoint-2250.weights.h5',
         '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/cgan/checkpoint-6274.weights.h5',
-        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/cgan/checkpoint-6375.weights.h5',
-        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/n_cgan/checkpoint-4476.weights.h5',
-        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/n_cgan/checkpoint-5026.weights.h5',
-        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/n_cgan/checkpoint-5451.weights.h5', ]
+        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/cgan/checkpoint-6375.weights.h5'
+]
 dataset_path = '../processed_datasets/train_balanced_undersampled.tfrecord'
-class_to_generate = 1
+class_to_generate = 54
 num_samples = 10
 
 dataset = load_tfrecord(dataset_path)
