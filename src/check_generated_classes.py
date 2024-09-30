@@ -48,8 +48,8 @@ def get_class_samples(dataset, class_label, num_samples):
     return samples
 
 
-def plot_images(real_images, generated_images, num_samples, class_label):
-    plt.figure(figsize=(15, 10))
+def plot_images(real_images, generated_images, num_samples, class_label, save, name="t.png"):
+    plt.figure(figsize=(8, 4))
 
     # Display real images
     for i in range(num_samples):
@@ -60,7 +60,7 @@ def plot_images(real_images, generated_images, num_samples, class_label):
         plt.title('Real')
 
     # Display generated images
-    for i in range(4 * num_samples):
+    for i in range(2 * num_samples):
         plt.subplot(5, num_samples,
                     i + 1 + num_samples)  # Second row for generated images
         plt.imshow(generated_images[i].numpy())
@@ -70,6 +70,8 @@ def plot_images(real_images, generated_images, num_samples, class_label):
     plt.suptitle(f'Class: {class_label}')
     plt.tight_layout()
     plt.show()
+    if save:
+        plt.savefig(name)
 
 
 # Define the default values
@@ -78,7 +80,8 @@ num_classes = 55
 image_size = 224
 latent_dim = 128
 image_dir = "images_generated"
-checkpoint_path = '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/cgan/checkpoint-6274.weights.h5'
+# checkpoint_path = '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/cgan/checkpoint-6274.weights.h5'
+checkpoint_path = '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/ncgan_s2/checkpoint-8384.weights.h5'
 dataset_path = '../processed_datasets/train_balanced_undersampled.tfrecord'
 num_samples = 5
 
@@ -116,6 +119,8 @@ if checkpoint_path:
 else:
     raise ValueError("No checkpoint found.")
 
+classes_to_save=[1, 14, 21, 23, 24,45,46, 52, 36]
+
 print("unique classes", len(unique_classes), unique_classes)
 for class_label in unique_classes:
     real_images = get_class_samples(dataset, class_label, num_samples)
@@ -124,8 +129,11 @@ for class_label in unique_classes:
     print(len(real_images))
 
     # Generate images
-    generated_images = generate_images(generator, class_label, 4 * num_samples,
+    generated_images = generate_images(generator, class_label, 2 * num_samples,
                                        latent_dim, num_classes)
 
     # Plot real and generated images
-    plot_images(real_images, generated_images, num_samples, class_label)
+
+    if class_label in classes_to_save:
+        plot_images(real_images, generated_images, num_samples, class_label, save=True, name=f"images/class_{class_label}")
+    plot_images(real_images, generated_images, num_samples, class_label, save=False)

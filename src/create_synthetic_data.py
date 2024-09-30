@@ -43,13 +43,12 @@ num_channels = 3
 num_classes = 55
 image_size = 224
 latent_dim = 128
-image_dir = "minority_new"
-checkpoint_path = '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/cgan/checkpoint-6375.weights.h5'
+image_dir = "synthetic_100b"
+checkpoint_path = '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/ncgan_s2/checkpoint-8384.weights.h5'
 
 # define classes and numbers of samples to generate
 # this is a dictionary with classes as keys and numbers of samples for the classes as values
-to_generate = {1: 24, 2: 0, 3: 0, 4: 127, 5: 0, 8: 151, 9: 60, 11: 160, 14: 0, 15: 55, 18: 0, 19: 0, 20: 153, 21: 0, 23: 0, 24: 0, 26: 90, 27: 116, 28: 153, 29: 150, 30: 152, 31: 131, 32: 127, 33: 44, 34: 28, 35: 70, 36: 139, 37: 114, 38: 157, 39: 140, 40: 108, 41: 155, 42: 120, 43: 99, 44: 70, 45: 20, 46: 103, 47: 148, 48: 0, 49: 71, 50: 138, 51: 96, 52: 109, 54: 80}
-
+to_generate = {1: 185, 2: 184, 3: 184, 4: 184, 5: 184, 8: 184, 9: 184, 11: 184, 14: 184, 15: 184, 18: 184, 19: 184, 20: 184, 21: 184, 23: 184, 24: 184, 26: 184, 27: 184, 28: 184, 29: 184, 30: 184, 31: 184, 32: 184, 33: 184, 34: 184, 35: 184, 36: 184, 37: 184, 38: 184, 39: 184, 40: 184, 41: 184, 42: 184, 43: 184, 44: 184, 45: 184, 46: 184, 47: 184, 48: 184, 49: 184, 50: 184, 51: 184, 52: 184, 54: 184}
 # set up the model
 generator_in_channels = latent_dim + num_classes
 discriminator_in_channels = num_channels + num_classes

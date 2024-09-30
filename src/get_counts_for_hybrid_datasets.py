@@ -4,6 +4,8 @@ from collections import defaultdict
 # Sample counts of real images for each class
 real_counts = {1: 134, 2: 305, 3: 1315, 4: 60, 5: 156, 8: 41, 9: 109, 11: 34, 14: 177, 15: 116, 18: 355, 19: 1165, 20: 38, 21: 1375, 23: 290, 24: 344, 26: 80, 27: 66, 28: 37, 29: 40, 30: 38, 31: 59, 32: 53, 33: 122, 34: 132, 35: 102, 36: 47, 37: 66, 38: 33, 39: 46, 40: 72, 41: 35, 42: 62, 43: 65, 44: 102, 45: 142, 46: 77, 47: 42, 48: 167, 49: 101, 50: 50, 51: 82, 52: 71, 54: 94}
 
+print("number of used classes", len(real_counts))
+print("number of samples",  np.sum(list(real_counts.values())))
 
 def calculate_sample_counts(real_counts, splits):
     real_data_counts = defaultdict(dict)
@@ -38,7 +40,7 @@ def calculate_sample_counts(real_counts, splits):
 
 
 # Define the split ratios
-split_ratios = [(0.1, 0.9), (0.5, 0.5), (0.9, 0.1)]  # (Real, Synthetic) pairs
+split_ratios = [(0.1, 0.9), (0.5, 0.5)]  # (Real, Synthetic) pairs
 
 # Calculate the sample counts for each split
 real_data, synthetic_data = calculate_sample_counts(real_counts, split_ratios)

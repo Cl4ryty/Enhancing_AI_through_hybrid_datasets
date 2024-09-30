@@ -1,12 +1,12 @@
-import argparse
-import ast
 import os
 import re
 from datetime import datetime
+import argparse
+import ast
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 os.environ['XLA_FLAGS'] = '/appl/spack/opt/spack/linux-rocky8-zen/gcc-8.5.0/cuda-11.8.0-x32erfzo6xl2qgbp5enezl53wwiingmt/nvvm'
-print("Working directory:", os.getcwd())
+print ("Working directory:" , os.getcwd()) 
 
 import tensorflow as tf
 import tensorflow.keras as keras
@@ -17,7 +17,7 @@ from utils import load_tfrecord, get_latest_checkpoint
 print("tf gpus:", tf.config.list_physical_devices('GPU'))
 
 # Define the default values
-batch_size = 256  # set this as high as possible as GANs profit from larger batch sizes
+batch_size = 256 # set this as high as possible as GANs profit from larger batch sizes
 num_channels = 3
 num_classes = 55
 image_size = 224
@@ -33,48 +33,42 @@ start_epoch = 0
 datasets_to_use = ['/home/student/h/hakoester/share/train_balanced_undersampled.tfrecord']
 # datasets_to_use = ['/home/hannah/Documents/A0_uni/master/S2/EnhancingAI/project_test/project_test/processed_datasets/train_balanced_undersampled.tfrecord']
 
-save_frequency = 25
-discriminator_extra_steps = 1
+
+
+save_frequency = 10
+
+discriminator_extra_steps = 3
 
 # Set up the argument parser
-parser = argparse.ArgumentParser(
-    description="Script for training a model with specified parameters.")
+parser = argparse.ArgumentParser(description="Script for training a model with specified parameters.")
 parser.add_argument('--batch_size', type=int, default=batch_size,
-                    help='Batch size for training (default: {})'.format(
-                        batch_size))
+                    help='Batch size for training (default: {})'.format(batch_size))
 parser.add_argument('--num_channels', type=int, default=num_channels,
-                    help='Number of channels in the images (default: {})'.format(
-                        num_channels))
+                    help='Number of channels in the images (default: {})'.format(num_channels))
 parser.add_argument('--num_classes', type=int, default=num_classes,
-                    help='Number of classes in the dataset (default: {})'.format(
-                        num_classes))
+                    help='Number of classes in the dataset (default: {})'.format(num_classes))
 parser.add_argument('--image_size', type=int, default=image_size,
                     help='Size of the images (default: {})'.format(image_size))
 parser.add_argument('--latent_dim', type=int, default=latent_dim,
-                    help='Latent dimension for the model (default: {})'.format(
-                        latent_dim))
+                    help='Latent dimension for the model (default: {})'.format(latent_dim))
 parser.add_argument('--image_dir', type=str, default=image_dir,
                     help='Directory of images (default: {})'.format(image_dir))
 parser.add_argument('--checkpoint_dir', type=str, default=checkpoint_dir,
-                    help='Directory to save model checkpoints/weights (default: {})'.format(
-                        checkpoint_dir))
+                    help='Directory to save model checkpoints/weights (default: {})'.format(checkpoint_dir))
 parser.add_argument('--epochs', type=int, default=EPOCHS,
-                    help='Number of training epochs (default: {})'.format(
-                        EPOCHS))
+                    help='Number of training epochs (default: {})'.format(EPOCHS))
 parser.add_argument('--datasets_to_use', type=str, default=str(datasets_to_use),
-                    help='List of datasets to use for training. These should be paths to tfrecord files (default: {}).'.format(
-                        datasets_to_use))
+                    help='List of datasets to use for training. These should be paths to tfrecord files (default: {}).'.format(datasets_to_use))
 
-parser.add_argument('--discriminator_extra_steps', type=str,
-                    default=str(discriminator_extra_steps),
-                    help='Number of discriminator steps per generator step (default: {}).'.format(
-                        discriminator_extra_steps))
+parser.add_argument('--discriminator_extra_steps', type=str, default=str(discriminator_extra_steps),
+                    help='Number of discriminator steps per generator step (default: {}).'.format(discriminator_extra_steps))
 
 # Parse the command-line arguments
 args = parser.parse_args()
 
 # Convert the datasets_to_use string back to a list
 datasets_to_use = ast.literal_eval(args.datasets_to_use)
+
 
 batch_size = args.batch_size
 num_channels = args.num_channels
@@ -97,7 +91,6 @@ print("Number of Epochs:", epochs)
 print("Datasets to Use:", datasets_to_use)
 print("Discriminator steps:", discriminator_extra_steps)
 
-
 def prepare_dataset(data):
     """
     Input Pipeline which prepares the dataset for further processing
@@ -105,9 +98,7 @@ def prepare_dataset(data):
     :return: preprocessed dataset
     """
 
-    data = data.map(lambda image, target: (
-    tf.image.resize(image, (image_size, image_size)),
-    tf.one_hot(target, depth=num_classes)))
+    data = data.map(lambda image, target: (tf.image.resize(image, (image_size, image_size)), tf.one_hot(target, depth=num_classes)))
     data = data.map(
             lambda image, target: (tf.cast(image, tf.float32) / 255.0, target))
     # data = data.cache()
@@ -118,13 +109,23 @@ def prepare_dataset(data):
 
 
 dataset = load_tfrecord(datasets_to_use.pop(0))
+# i = 0
+# for y,x in dataset:
+#     print(i)
+#     i+=1
+#     print(tf.keras.utils.to_categorical(x,num_classes=num_classes))
+
 
 # concatenate the datasets to train the GAN on all the data
-while len(datasets_to_use) > 0:
-    concatenate_dataset = load_tfrecord(datasets_to_use.pop(0))
-    dataset = dataset.concatenate(concatenate_dataset)
+# while len(datasets_to_use)>0:
+#     concatenate_dataset = load_tfrecord(datasets_to_use.pop(0))
+#     dataset = dataset.concatenate(concatenate_dataset)
+
 
 dataset = dataset.apply(prepare_dataset)
+#dataset = dataset.take(10)
+
+# [TODO] for the first stage undersample all classes to the smallest number of samples of a class to train on a balanced dataset
 
 # After loading the dataset and applying the above operations
 for images, labels in dataset.take(1):  # Take just one batch to check the shape
@@ -156,9 +157,11 @@ wgan = model.ConditionalWGAN(discriminator=discriminator, generator=generator,
                              discriminator_extra_steps=discriminator_extra_steps, )
 
 # Compile the wgan model
-wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
-        g_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
-        loss_fn=keras.losses.BinaryCrossentropy(from_logits=True), )
+wgan.compile(
+    d_optimizer=keras.optimizers.Adam(learning_rate=0.00001),
+    g_optimizer=keras.optimizers.Adam(learning_rate=0.00001),
+    loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
+)
 
 log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
@@ -184,10 +187,8 @@ else:
 print(wgan.metrics_names)
 model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath, monitor='generator_loss',
-        save_weights_only=True, mode='min', verbose=1, save_best_only=False,
-        save_freq=save_frequency * 7)
+        save_weights_only=True, mode='min', verbose=1, save_best_only=False, save_freq=save_frequency*56)
 
 print("Fitting the GAN")
-wgan.fit(dataset, batch_size=batch_size, epochs=EPOCHS + start_epoch,
-         initial_epoch=start_epoch,
+wgan.fit(dataset, batch_size=batch_size, epochs=EPOCHS+start_epoch, initial_epoch=start_epoch,
          callbacks=[tensorboard_callback, model_checkpoint_callback, cbk])

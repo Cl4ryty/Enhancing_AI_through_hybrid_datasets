@@ -89,7 +89,17 @@ image_dir = "images_generated"
 checkpoints = [
         '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/checkpoints/cgan_s2_1/checkpoint-2250.weights.h5',
         '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/cgan/checkpoint-6274.weights.h5',
-        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/cgan/checkpoint-6375.weights.h5'
+        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/cgan/checkpoint-6375.weights.h5',
+        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/ncgan_s2/checkpoint-8032.weights.h5',
+        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/ncgan_s2/checkpoint-8048.weights.h5',
+        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/ncgan_s2/checkpoint-8064.weights.h5',
+        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/ncgan_s2/checkpoint-8336.weights.h5',
+        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/ncgan_s2/checkpoint-8384.weights.h5',
+        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/ncgan_s2/checkpoint-8720.weights.h5',
+        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/ncgan_s2/checkpoint-8736.weights.h5',
+        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/ncgan_s2/checkpoint-8768.weights.h5',
+        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/ncgan_s2/checkpoint-8784.weights.h5',
+        '/media/hannah/DATA/A0_Uni/master/S2/Enhancing_AI/checkpoints/ncgan_s2/checkpoint-8800.weights.h5'
 ]
 dataset_path = '../processed_datasets/train_balanced_undersampled.tfrecord'
 class_to_generate = 54

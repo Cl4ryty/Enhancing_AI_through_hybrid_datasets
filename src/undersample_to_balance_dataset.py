@@ -1,4 +1,7 @@
 import argparse
+
+import numpy as np
+
 from utils import load_tfrecord, write_tfrecord, undersample_dataset
 
 
@@ -38,10 +41,15 @@ final_dataset = undersample_dataset(dataset, minority_threshold)
 # batch dataset as the write function expects a batched dataset
 final_dataset = final_dataset.batch(32)
 
+labels, counts = np.unique(np.fromiter(final_dataset.unbatch().map(lambda x, y: y), np.int32),
+                           return_counts=True)
+print("real dataset counts", np.sum(counts))
+print(dict(zip(labels, counts)))
+
 # Inspect the shapes of the final balanced dataset
 for x, y in final_dataset.take(1):
     print(x.shape)
     print(y.shape)
 
 # Save the balanced dataset for future use
-write_tfrecord(final_dataset, save_to, scale_image_back=False)
+# write_tfrecord(final_dataset, save_to, scale_image_back=False)

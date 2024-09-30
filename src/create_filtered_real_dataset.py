@@ -58,5 +58,5 @@ for i, dataset_path in enumerate(datasets_to_use):
     filtered_dataset = filtered_dataset.batch(batch_size)
 
     # write to new file
-    write_tfrecord(filtered_dataset, new_paths[i],
-                   scale_image_back=False)
+    # write_tfrecord(filtered_dataset, new_paths[i],
+    #                scale_image_back=False)
